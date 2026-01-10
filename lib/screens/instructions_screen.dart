@@ -28,6 +28,8 @@ class InstructionsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildIntroCard(theme),
+            const SizedBox(height: 24),
+            _buildNetworkWarning(theme),
             const SizedBox(height: 32),
             Text(
               'Step-by-Step Instructions',
@@ -346,6 +348,86 @@ class InstructionsScreen extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                     color: theme.colorScheme.onSurfaceVariant,
                     height: 1.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  Widget _buildNetworkWarning(ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.amber.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.amber.withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.wifi_tethering, color: Colors.amber, size: 24),
+              const SizedBox(width: 12),
+              Text(
+                'Critical Requirement',
+                style: GoogleFonts.manrope(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.amber[800],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Your phone and computer MUST be connected to the SAME Wi-Fi network.',
+            style: GoogleFonts.manrope(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          const SizedBox(height: 16),
+          
+          // No Wi-Fi solution
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surface,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                 Row(
+                   children: [
+                     Icon(Icons.lightbulb_rounded, size: 18, color: theme.colorScheme.primary),
+                     const SizedBox(width: 8),
+                     Text(
+                      'No Wi-Fi? Use a Hotspot!',
+                      style: GoogleFonts.manrope(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                   ],
+                 ),
+                const SizedBox(height: 8),
+                Text(
+                  '1. Turn on "Personal Hotspot" on your phone.\n2. Connect your laptop to your phone\'s hotspot.\n3. Proceed with the setup as normal.',
+                  style: GoogleFonts.manrope(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.6,
                   ),
                 ),
               ],

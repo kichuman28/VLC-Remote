@@ -112,54 +112,6 @@ class _AppEntryPointState extends State<AppEntryPoint> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: const Color(0xFF0D0D0D),
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Animated loading indicator
-              TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0.0, end: 1.0),
-                duration: const Duration(milliseconds: 800),
-                builder: (context, value, child) {
-                  return Opacity(
-                    opacity: value,
-                    child: Transform.scale(
-                      scale: 0.8 + (0.2 * value),
-                      child: child,
-                    ),
-                  );
-                },
-                child: Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF6B35).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Icon(
-                    Icons.play_arrow_rounded,
-                    color: Color(0xFFFF6B35),
-                    size: 36,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'VLC Remote',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
     return Consumer<VlcProvider>(
       builder: (context, provider, _) {
         // If connected, show remote screen
@@ -167,7 +119,6 @@ class _AppEntryPointState extends State<AppEntryPoint> {
           return const RemoteScreen();
         }
 
-        // Otherwise show setup screen
         return const SetupScreen();
       },
     );

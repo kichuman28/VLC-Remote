@@ -216,12 +216,50 @@ class VlcProvider extends ChangeNotifier {
     _pollingTimer = null;
   }
 
+  // ============================================================
+  // AUDIO, SUBTITLE & SPEED CONTROL
+  // ============================================================
+
+  // State persistence to solve UI flickering when VLC doesn't report selection status
+  int? _lastSetAudioTrack;
+  int? _lastSetSubtitleTrack;
+
   /// Polls VLC status
   Future<void> _pollStatus() async {
     if (!_isPollingActive || _apiService == null) return;
     
     try {
-      final status = await _apiService!.getStatus();
+      var status = await _apiService!.getStatus();
+      
+      // PERSISTENCE LOGIC:
+      // If we recently set a track, but VLC reports -1 (unknown/none) for current track,
+      // and our set track exists in the list, then override the status to keep it highlighted.
+      
+      // Audio Persistence
+      if (status.currentAudioTrack == -1 && 
+          _lastSetAudioTrack != null && 
+          status.audioTracks.any((t) => t.id == _lastSetAudioTrack)) {
+        status = status.copyWith(currentAudioTrack: _lastSetAudioTrack);
+      } else if (status.currentAudioTrack != -1) {
+        // VLC reported a valid track, so we can clear our override (truth has prevailed)
+        _lastSetAudioTrack = null; 
+      }
+
+      // Subtitle Persistence
+      if (status.currentSubtitleTrack == -1 && 
+          _lastSetSubtitleTrack != null && 
+          status.subtitleTracks.any((t) => t.id == _lastSetSubtitleTrack)) {
+        status = status.copyWith(currentSubtitleTrack: _lastSetSubtitleTrack);
+      } else if (status.currentSubtitleTrack != -1) {
+        // VLC reported a valid track (could be -1 if genuinely disabled, but here we cover check != -1)
+        // Actually, if we selected 'Disable' (-1), VLC reporting -1 matches our intent. 
+        // If we selected ID 5, and VLC reports -1, we override. 
+        // If we selected ID 5, and VLC reports ID 5, we clear.
+        if (status.currentSubtitleTrack == _lastSetSubtitleTrack) {
+           _lastSetSubtitleTrack = null;
+        }
+      }
+
       _status = status;
       
       // Ensure we're still marked as connected
@@ -232,8 +270,6 @@ class VlcProvider extends ChangeNotifier {
       
       notifyListeners();
     } on VlcApiException catch (e) {
-      // Only update error state after multiple failures in a row
-      // For now, just silently fail and retry
       debugPrint('Polling error: ${e.message}');
     } catch (e) {
       debugPrint('Polling error: $e');
@@ -288,15 +324,11 @@ class VlcProvider extends ChangeNotifier {
   }
 
   /// Set volume with debounced API call
-  /// 
-  /// [percent] 0-100 percentage (can exceed 100 for boost)
   Future<void> setVolume(int percent) async {
     if (_apiService == null) return;
     
-    // Convert percentage to VLC scale (256 = 100%)
     final vlcValue = ((percent / 100) * 256).round().clamp(0, 512);
     
-    // Optimistic update
     _status = VlcStatus.fromMap({
       'state': _status.state,
       'volume': vlcValue,
@@ -318,7 +350,6 @@ class VlcProvider extends ChangeNotifier {
   Future<void> seekTo(int seconds) async {
     if (_apiService != null) {
       await _apiService!.seekTo(seconds);
-      // Optimistic update
       _status = _status.copyWith(time: seconds);
       notifyListeners();
     }
@@ -328,7 +359,6 @@ class VlcProvider extends ChangeNotifier {
   Future<void> seekForward() async {
     if (_apiService == null) return;
     
-    // Optimistic update
     final newTime = (_status.time + 10).clamp(0, _status.length);
     _status = VlcStatus.fromMap({
       'state': _status.state,
@@ -351,7 +381,6 @@ class VlcProvider extends ChangeNotifier {
   Future<void> seekBackward() async {
     if (_apiService == null) return;
     
-    // Optimistic update
     final newTime = (_status.time - 10).clamp(0, _status.length);
     _status = VlcStatus.fromMap({
       'state': _status.state,
@@ -376,7 +405,6 @@ class VlcProvider extends ChangeNotifier {
     
     try {
       await _apiService!.toggleFullscreen();
-      // Poll to get actual fullscreen state
       await _pollStatus();
     } catch (e) {
       debugPrint('Fullscreen error: $e');
@@ -389,7 +417,6 @@ class VlcProvider extends ChangeNotifier {
     
     try {
       await _apiService!.playNext();
-      // Poll to get new status
       await Future.delayed(const Duration(milliseconds: 300));
       await _pollStatus();
     } catch (e) {
@@ -403,7 +430,6 @@ class VlcProvider extends ChangeNotifier {
     
     try {
       await _apiService!.playPrevious();
-      // Poll to get new status
       await Future.delayed(const Duration(milliseconds: 300));
       await _pollStatus();
     } catch (e) {
@@ -461,7 +487,6 @@ class VlcProvider extends ChangeNotifier {
     
     try {
       await _apiService!.playFile(fileUri);
-      // Poll to get new status
       await Future.delayed(const Duration(milliseconds: 500));
       await _pollStatus();
     } catch (e) {
@@ -470,14 +495,11 @@ class VlcProvider extends ChangeNotifier {
   }
 
   /// Play a custom playlist
-  /// 
-  /// Clears VLC's playlist and loads the provided items
   Future<void> playCustomPlaylist(List<String> fileUris) async {
     if (_apiService == null || fileUris.isEmpty) return;
     
     try {
       await _apiService!.playCustomPlaylist(fileUris);
-      // Poll to get new status
       await Future.delayed(const Duration(milliseconds: 500));
       await _pollStatus();
     } catch (e) {
@@ -485,18 +507,19 @@ class VlcProvider extends ChangeNotifier {
     }
   }
 
-  // ============================================================
-  // AUDIO, SUBTITLE & SPEED CONTROL
-  // ============================================================
-
   /// Set audio track
   Future<void> setAudioTrack(int trackId) async {
     if (_apiService == null) return;
     
+    // Optimistic Update
+    _lastSetAudioTrack = trackId;
+    _status = _status.copyWith(currentAudioTrack: trackId);
+    notifyListeners();
+    
     try {
       await _apiService!.setAudioTrack(trackId);
-      await Future.delayed(const Duration(milliseconds: 300));
-      await _pollStatus();
+      // We rely on polling to confirm, but our _pollStatus logic will
+      // now preserve this selection if VLC returns unknown.
     } catch (e) {
       debugPrint('Audio track error: $e');
     }
@@ -506,10 +529,13 @@ class VlcProvider extends ChangeNotifier {
   Future<void> setSubtitleTrack(int trackId) async {
     if (_apiService == null) return;
     
+    // Optimistic Update
+    _lastSetSubtitleTrack = trackId;
+    _status = _status.copyWith(currentSubtitleTrack: trackId);
+    notifyListeners();
+
     try {
       await _apiService!.setSubtitleTrack(trackId);
-      await Future.delayed(const Duration(milliseconds: 300));
-      await _pollStatus();
     } catch (e) {
       debugPrint('Subtitle track error: $e');
     }
@@ -519,10 +545,13 @@ class VlcProvider extends ChangeNotifier {
   Future<void> setPlaybackRate(double rate) async {
     if (_apiService == null) return;
     
+    // Optimistic Update
+    _status = _status.copyWith(rate: rate);
+    notifyListeners();
+
     try {
       await _apiService!.setPlaybackRate(rate);
-      await Future.delayed(const Duration(milliseconds: 300));
-      await _pollStatus();
+      // The poll will pick this up quickly
     } catch (e) {
       debugPrint('Playback rate error: $e');
     }

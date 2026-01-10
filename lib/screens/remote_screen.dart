@@ -289,46 +289,100 @@ class _RemoteScreenState extends State<RemoteScreen>
         ),
         const SizedBox(height: 16),
 
-        // Progress bar
+        // Seek Bar
         if (status.hasMedia) ...[
-          Container(
-            height: 4,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(2),
-              color: theme.colorScheme.surfaceContainerHighest,
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: status.progress.clamp(0.0, 1.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(2),
-                  color: theme.colorScheme.primary,
+          _buildSeekBar(context, provider, status),
+        ] else ...[
+           Padding(
+             padding: const EdgeInsets.symmetric(vertical: 20),
+             child: Text(
+               'No media',
+               style: GoogleFonts.manrope(
+                 fontSize: 14,
+                 color: theme.colorScheme.onSurfaceVariant,
+               ),
+             ),
+           ),
+        ],
+      ],
+    );
+  }
+
+  // Local state for seeking to prevent jumping while dragging
+  double? _dragValue;
+
+  Widget _buildSeekBar(BuildContext context, VlcProvider provider, dynamic status) {
+    final theme = Theme.of(context);
+    final length = status.length.toDouble();
+    final time = status.time.toDouble();
+    
+    // Safety check for invalid length
+    final max = length > 0 ? length : 1.0;
+    final value = (_dragValue ?? time).clamp(0.0, max);
+    
+    String formatTime(int seconds) {
+      final duration = Duration(seconds: seconds);
+      final h = duration.inHours;
+      final m = duration.inMinutes.remainder(60);
+      final s = duration.inSeconds.remainder(60);
+      if (h > 0) {
+        return '$h:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+      }
+      return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    }
+
+    return Column(
+      children: [
+        SliderTheme(
+          data: SliderThemeData(
+            trackHeight: 4,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+            activeTrackColor: theme.colorScheme.primary,
+            inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+            thumbColor: theme.colorScheme.primary,
+          ),
+          child: Slider(
+            value: value,
+            min: 0,
+            max: max,
+            onChanged: (val) {
+              setState(() {
+                _dragValue = val;
+              });
+            },
+            onChangeEnd: (val) {
+              provider.seekTo(val.toInt());
+              setState(() {
+                _dragValue = null;
+              });
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                formatTime(value.toInt()),
+                style: GoogleFonts.manrope(
+                   fontSize: 12,
+                   color: theme.colorScheme.onSurfaceVariant,
+                   fontWeight: FontWeight.w500,
                 ),
               ),
-            ),
+              Text(
+                formatTime(length.toInt()),
+                style: GoogleFonts.manrope(
+                   fontSize: 12,
+                   color: theme.colorScheme.onSurfaceVariant,
+                   fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
-
-          // Time
-          Text(
-            status.timeDisplay,
-            style: GoogleFonts.manrope(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: theme.colorScheme.onSurfaceVariant,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ] else ...[
-          Text(
-            'No media',
-            style: GoogleFonts.manrope(
-              fontSize: 14,
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+        ),
       ],
     );
   }

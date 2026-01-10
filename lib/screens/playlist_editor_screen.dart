@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -283,43 +284,151 @@ class _FilePickerScreen extends StatefulWidget {
 
 class _FilePickerScreenState extends State<_FilePickerScreen> {
   List<FileItem> _items = [];
+  List<FileItem> _filteredItems = [];
   bool _isLoading = true;
+  String? _error;
+  
   String _currentPath = 'file:///C:/';
   final List<String> _pathStack = [];
-  final Set<String> _selectedUris = {};
+  
+  // Use a map to store selected items so we don't lose them when changing folders
+  final Map<String, FileItem> _selectedItems = {};
+
+  // Search
+  final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  bool _isSearchingFiles = false; // Deep search active?
+  bool _searchCancelled = false;
+  String _searchQuery = '';
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
     _loadDirectory(_currentPath);
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadDirectory(String path) async {
-    setState(() => _isLoading = true);
-
-    final provider = context.read<VlcProvider>();
-    final rawItems = await provider.browseDirectory(path);
-
-    final items = rawItems.map((m) => FileItem.fromMap(m)).toList();
-    items.sort((a, b) {
-      if (a.isDirectory && !b.isDirectory) return -1;
-      if (!a.isDirectory && b.isDirectory) return 1;
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    setState(() {
+      _isLoading = true;
+      _error = null;
     });
 
+    final provider = context.read<VlcProvider>();
+    try {
+      final rawItems = await provider.browseDirectory(path);
+
+      final items = rawItems.map((m) => FileItem.fromMap(m)).toList();
+      items.sort((a, b) {
+        if (a.isDirectory && !b.isDirectory) return -1;
+        if (!a.isDirectory && b.isDirectory) return 1;
+        return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      });
+
+      setState(() {
+        _items = items;
+        _filteredItems = items;
+        _currentPath = path;
+        _isLoading = false;
+      });
+    } catch(e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Failed to load folder';
+      });
+    }
+  }
+
+  void _onSearchChanged() {
+    if (_debounceTimer?.isActive ?? false) _debounceTimer!.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 600), _performSearch);
+  }
+
+  Future<void> _performSearch() async {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      setState(() {
+        _searchQuery = '';
+        _filteredItems = _items;
+      });
+      return;
+    }
+
     setState(() {
-      _items = items;
-      _currentPath = path;
-      _isLoading = false;
+      _searchQuery = query.toLowerCase();
+      _isSearchingFiles = true;
+      _searchCancelled = false;
+      _filteredItems = []; // Start fresh
+    });
+
+    final provider = context.read<VlcProvider>();
+    try {
+      await provider.searchFilesStream(
+        'file:///C:/', 
+        query,
+        onFound: (batch) {
+           if (!mounted) return;
+           final newItems = batch.map((m) => FileItem.fromMap(m)).toList();
+           setState(() {
+             _filteredItems.addAll(newItems);
+             _filteredItems.sort((a, b) {
+                if (a.isDirectory && !b.isDirectory) return -1;
+                if (!a.isDirectory && b.isDirectory) return 1;
+                return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+             });
+           });
+        },
+        isCancelled: () => _searchCancelled,
+      );
+    } finally {
+      if (mounted) setState(() => _isSearchingFiles = false);
+    }
+  }
+
+  void _stopSearch() {
+    _searchCancelled = true;
+    setState(() => _isSearchingFiles = false);
+  }
+
+  void _toggleSearch() {
+     if (_isSearchingFiles) {
+       _stopSearch();
+       return;
+     }
+
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        _searchQuery = '';
+        _filteredItems = _items;
+      }
     });
   }
 
   void _navigateTo(String path) {
+    if (_searchQuery.isNotEmpty) {
+      // Clear search when navigating into a folder
+       _searchController.clear();
+    }
     _pathStack.add(_currentPath);
     _loadDirectory(path);
   }
 
   void _goBack() {
+    if (_isSearching) {
+      _toggleSearch();
+      return;
+    }
+
     if (_pathStack.isEmpty) {
       Navigator.of(context).pop();
       return;
@@ -330,17 +439,16 @@ class _FilePickerScreenState extends State<_FilePickerScreen> {
 
   void _toggleSelection(FileItem item) {
     setState(() {
-      if (_selectedUris.contains(item.path)) {
-        _selectedUris.remove(item.path);
+      if (_selectedItems.containsKey(item.path)) {
+        _selectedItems.remove(item.path);
       } else {
-        _selectedUris.add(item.path);
+        _selectedItems[item.path] = item;
       }
     });
   }
 
   void _confirmSelection() {
-    final selected = _items
-        .where((i) => _selectedUris.contains(i.path))
+    final selected = _selectedItems.values
         .map((i) => PlaylistItem(name: i.name, uri: i.path))
         .toList();
     Navigator.of(context).pop(selected);
@@ -350,37 +458,122 @@ class _FilePickerScreenState extends State<_FilePickerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    // Determines if we show search UI
+    Widget titleWidget;
+    if (_isSearching) {
+      titleWidget = Container(
+        height: 48,
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        alignment: Alignment.center,
+        child: TextField(
+          controller: _searchController,
+          autofocus: true,
+          style: GoogleFonts.manrope(fontSize: 15),
+          textAlignVertical: TextAlignVertical.center,
+          decoration: InputDecoration(
+            hintText: 'Search PC to add...',
+            hintStyle: GoogleFonts.manrope(
+              fontSize: 15, 
+              color: theme.colorScheme.onSurfaceVariant
+            ),
+            border: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+        ),
+      );
+    } else {
+      titleWidget = Text(
+        'Select Videos',
+        style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _goBack,
         ),
-        title: Text(
-          'Select Videos',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
-        ),
+        title: titleWidget,
         actions: [
-          if (_selectedUris.isNotEmpty)
+          IconButton(
+            icon: Icon(
+              _isSearchingFiles 
+                  ? Icons.stop_circle_outlined
+                  : (_isSearching ? Icons.close_rounded : Icons.search_rounded)
+            ),
+            onPressed: _toggleSearch,
+            color: _isSearchingFiles ? theme.colorScheme.error : null,
+          ),
+          if (_selectedItems.isNotEmpty && !_isSearching)
             TextButton(
               onPressed: _confirmSelection,
               child: Text(
-                'Add ${_selectedUris.length}',
+                'Add ${_selectedItems.length}',
                 style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
               ),
             ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: _items.length,
+      body: _buildBody(theme),
+      floatingActionButton: (_selectedItems.isNotEmpty && _isSearching) 
+         ? FloatingActionButton.extended(
+             onPressed: _confirmSelection,
+             label: Text('Add ${_selectedItems.length}'),
+             icon: const Icon(Icons.check),
+           )
+         : null,
+    );
+  }
+
+  Widget _buildBody(ThemeData theme) {
+     if (_isLoading) return const Center(child: CircularProgressIndicator());
+     
+     if (_isSearchingFiles && _filteredItems.isEmpty) {
+        return Column(
+          children: [
+            const LinearProgressIndicator(),
+            Padding(
+               padding: const EdgeInsets.all(16),
+               child: Text('Searching C:/... Items found: ${_filteredItems.length}'),
+            )
+          ],
+        );
+     }
+     
+     // Common list builder
+     final itemsToShow = _filteredItems;
+
+     if (itemsToShow.isEmpty) {
+       return const Center(child: Text('No videos found'));
+     }
+
+     return Column(
+       children: [
+         if (_isSearchingFiles) ...[
+            const LinearProgressIndicator(),
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text('Deep searching... Found ${itemsToShow.length} items. Tap stop to finish.'),
+            ),
+         ],
+         Expanded(
+           child: ListView.builder(
+              itemCount: itemsToShow.length,
               itemBuilder: (context, index) {
-                final item = _items[index];
+                final item = itemsToShow[index];
                 return _buildFileTile(item, theme);
               },
             ),
-    );
+         ),
+       ],
+     );
   }
 
   Widget _buildFileTile(FileItem item, ThemeData theme) {
@@ -411,7 +604,7 @@ class _FilePickerScreenState extends State<_FilePickerScreen> {
       return const SizedBox.shrink();
     }
 
-    final isSelected = _selectedUris.contains(item.path);
+    final isSelected = _selectedItems.containsKey(item.path);
 
     return ListTile(
       leading: Container(

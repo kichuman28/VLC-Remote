@@ -305,6 +305,8 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                     border: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    enabledBorder: InputBorder.none,
                     isDense: true,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   ),

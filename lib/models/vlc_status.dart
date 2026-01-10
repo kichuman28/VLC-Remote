@@ -108,6 +108,34 @@ class VlcStatus {
     );
   }
 
+  VlcStatus copyWith({
+    String? state,
+    int? volume,
+    int? time,
+    int? length,
+    String? title,
+    bool? fullscreen,
+    double? rate,
+    List<MediaTrack>? audioTracks,
+    int? currentAudioTrack,
+    List<MediaTrack>? subtitleTracks,
+    int? currentSubtitleTrack,
+  }) {
+    return VlcStatus(
+      state: state ?? this.state,
+      volume: volume ?? this.volume,
+      time: time ?? this.time,
+      length: length ?? this.length,
+      title: title ?? this.title,
+      fullscreen: fullscreen ?? this.fullscreen,
+      rate: rate ?? this.rate,
+      audioTracks: audioTracks ?? this.audioTracks,
+      currentAudioTrack: currentAudioTrack ?? this.currentAudioTrack,
+      subtitleTracks: subtitleTracks ?? this.subtitleTracks,
+      currentSubtitleTrack: currentSubtitleTrack ?? this.currentSubtitleTrack,
+    );
+  }
+
   /// Formats seconds into human-readable duration
   static String _formatDuration(int seconds) {
     if (seconds < 0) return '0:00';

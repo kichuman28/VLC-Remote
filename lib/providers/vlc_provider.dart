@@ -314,6 +314,16 @@ class VlcProvider extends ChangeNotifier {
     }
   }
 
+  /// Seek to absolute time
+  Future<void> seekTo(int seconds) async {
+    if (_apiService != null) {
+      await _apiService!.seekTo(seconds);
+      // Optimistic update
+      _status = _status.copyWith(time: seconds);
+      notifyListeners();
+    }
+  }
+
   /// Seek forward 10 seconds
   Future<void> seekForward() async {
     if (_apiService == null) return;

@@ -255,6 +255,11 @@ class VlcApiService {
     await _sendCommand('seek', {'val': '$sign${seconds}s'});
   }
 
+  /// Seek to absolute time in seconds
+  Future<void> seekTo(int seconds) async {
+    await _sendCommand('seek', {'val': '${seconds}'});
+  }
+
   /// Seek forward 10 seconds
   Future<void> seekForward() async {
     await seekRelative(10);

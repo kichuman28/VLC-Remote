@@ -41,7 +41,7 @@ class VlcStatus {
   bool get isPlaying => state == 'playing';
   
   /// Whether media is loaded (convenience getter)
-  bool get hasMedia => length > 0;
+  bool get hasMedia => length > 0 || time > 0 || state == 'playing' || state == 'paused';
   
   /// Progress as percentage (0.0 to 1.0)
   double get progress => length > 0 ? time / length : 0.0;

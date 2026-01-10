@@ -79,7 +79,7 @@ class VlcApiService {
       final document = xml.XmlDocument.parse(xmlString);
       final root = document.rootElement;
 
-      // Extract basic status fields
+      // Basic fields
       final state = _getXmlText(root, 'state') ?? 'stopped';
       final volume = int.tryParse(_getXmlText(root, 'volume') ?? '256') ?? 256;
       final time = int.tryParse(_getXmlText(root, 'time') ?? '0') ?? 0;
@@ -87,94 +87,112 @@ class VlcApiService {
       final fullscreen = _getXmlText(root, 'fullscreen') == 'true';
       final rate = double.tryParse(_getXmlText(root, 'rate') ?? '1.0') ?? 1.0;
 
-      // Extract title from information/category/meta
       String title = 'No Media';
       List<MediaTrack> audioTracks = [];
       int currentAudioTrack = -1;
       List<MediaTrack> subtitleTracks = [];
       int currentSubtitleTrack = -1;
 
-      try {
+      // Helper to add unique tracks
+      void addTrack(List<MediaTrack> list, int id, String name, bool isSelected, {bool isSubtitle = false}) {
+        if (id < 0) return;
+        if (!list.any((t) => t.id == id)) {
+          list.add(MediaTrack(id: id, name: name));
+        }
+        if (isSelected) {
+          if (isSubtitle) currentSubtitleTrack = id;
+          else currentAudioTrack = id;
+        }
+      }
+
+      // 1. Try Standard 'audiostreams' / 'subtitlestreams'
+      // This is the most reliable source for Control IDs.
+      void parseStreams(String tagName, List<MediaTrack> list, bool isSubtitle) {
+         final containers = root.findAllElements(tagName);
+         for (final container in containers) {
+            for (final node in container.children) {
+              if (node is xml.XmlElement) {
+                 // IDs can be in 'streamindex', 'id', or 'val'
+                 final idStr = node.getAttribute('streamindex') ?? 
+                               node.getAttribute('id') ?? 
+                               node.getAttribute('val');
+                 final id = int.tryParse(idStr ?? '-1') ?? -1;
+                 
+                 var name = node.getAttribute('name') ?? node.innerText.trim();
+                 if (name.isEmpty) name = 'Track $id';
+                 
+                 final selected = node.getAttribute('selected') == 'selected' || 
+                                  node.getAttribute('current') == 'current';
+
+                 addTrack(list, id, name, selected, isSubtitle: isSubtitle);
+              }
+            }
+         }
+      }
+
+      parseStreams('audiostreams', audioTracks, false);
+      parseStreams('subtitlestreams', subtitleTracks, true);
+
+      // 2. Fallback: Parse 'information' section if lists are empty.
+      // IDs are tricky here, but we can try to find them.
+      if (audioTracks.isEmpty && subtitleTracks.isEmpty) {
         final information = root.findElements('information').firstOrNull;
         if (information != null) {
           for (final category in information.findElements('category')) {
-            final categoryName = category.getAttribute('name');
-            
-            if (categoryName == 'meta') {
-              // Extract title
-              for (final info in category.findElements('info')) {
-                final infoName = info.getAttribute('name');
-                if (infoName == 'title' || infoName == 'filename') {
-                  final text = info.innerText.trim();
-                  if (text.isNotEmpty) {
-                    title = text;
-                    break;
+             final catName = category.getAttribute('name') ?? '';
+             
+             // Meta info
+             if (catName == 'meta') {
+                for (final info in category.findElements('info')) {
+                  if (info.getAttribute('name') == 'title' || info.getAttribute('name') == 'filename') {
+                    if (info.innerText.isNotEmpty) title = info.innerText;
                   }
                 }
-              }
-            }
+             }
+             
+             // Stream info (fallback for tracks)
+             if (catName.startsWith('Stream ')) {
+                // Try to determine type
+                String? type;
+                String? language;
+                String? codec;
+                String? description;
+                int id = -1;
+                
+                // Parse Stream ID from name "Stream N"
+                try {
+                  id = int.parse(catName.split(' ')[1]);
+                } catch (_) {}
+
+                for (final info in category.findElements('info')) {
+                   final name = info.getAttribute('name')?.toLowerCase() ?? '';
+                   final text = info.innerText;
+                   
+                   if (name == 'type') type = text;
+                   if (name == 'language') language = text;
+                   if (name == 'codec') codec = text;
+                   if (name == 'description') description = text;
+                }
+
+                String trackName = description ?? language ?? codec ?? 'Stream $id';
+                
+                if (type == 'Audio') {
+                   // NOTE: Stream indices in 'information' might not match control IDs perfectly,
+                   // but it's better than showing nothing.
+                   addTrack(audioTracks, id, trackName, false, isSubtitle: false);
+                } else if (type == 'Subtitle') {
+                   addTrack(subtitleTracks, id, trackName, false, isSubtitle: true);
+                }
+             }
           }
         }
-      } catch (_) {
-        // If parsing fails, keep default values
       }
 
-      // Parse audio and subtitle tracks
-      // We use findAllElements to find track info wherever it may be nested
-      try {
-        // Audio tracks
-        // Look for 'audiostreams' anywhere in the status
-        
-        // Try standard location first or deep search
-        final audioTrackInfos = root.findAllElements('audiostreams');
-        for (final audioTrackInfo in audioTrackInfos) {
-          final streams = audioTrackInfo.findElements('stream');
-          if (streams.isNotEmpty) {
-            for (final stream in streams) {
-              final id = int.tryParse(stream.getAttribute('streamindex') ?? '-1') ?? -1;
-              final name = stream.getAttribute('name') ?? 'Track $id';
-              final selected = stream.getAttribute('selected') == 'selected';
-              if (id >= 0) {
-                audioTracks.add(MediaTrack(id: id, name: name));
-                if (selected) currentAudioTrack = id;
-              }
-            }
-          }
-        }
-
-        // Subtitle tracks
-        bool foundSubtitle = false;
-        final subtitleTrackInfos = root.findAllElements('subtitlestreams');
-        
-        if (subtitleTrackInfos.isNotEmpty) {
-          // Add "Off" option for subtitles if we found the section
-          // Only add 'Off' once
-          if (subtitleTracks.isEmpty) {
-             subtitleTracks.add(const MediaTrack(id: -1, name: 'Off'));
-          }
-          foundSubtitle = true;
-          
-          for (final subtitleTrackInfo in subtitleTrackInfos) {
-            for (final stream in subtitleTrackInfo.findElements('stream')) {
-              final id = int.tryParse(stream.getAttribute('streamindex') ?? '-1') ?? -1;
-              final name = stream.getAttribute('name') ?? 'Track $id';
-              final selected = stream.getAttribute('selected') == 'selected';
-              if (id >= 0) {
-                // Avoid duplicates
-                if (!subtitleTracks.any((t) => t.id == id)) {
-                  subtitleTracks.add(MediaTrack(id: id, name: name));
-                }
-                if (selected) currentSubtitleTrack = id;
-              }
-            }
-          }
-          
-          if (currentSubtitleTrack == -1 && foundSubtitle) {
-             currentSubtitleTrack = -1;
-          }
-        }
-      } catch (_) {
-        // Track parsing failed, continue with empty lists
+      // 3. Fallback: Add "Disable" option for subtitles if not present
+      if (subtitleTracks.isNotEmpty) {
+         if (!subtitleTracks.any((t) => t.id == -1)) {
+           subtitleTracks.insert(0, const MediaTrack(id: -1, name: 'Disable'));
+         }
       }
 
       return VlcStatus.fromMap({

@@ -43,6 +43,7 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
 
   @override
   void dispose() {
+    _searchCancelled = true; // Stop any running search
     _searchController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
@@ -248,6 +249,11 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
 
   Future<void> _playFile(FileItem item) async {
     HapticFeedback.mediumImpact();
+
+    // Stop deep search if running
+    if (_isSearchingFiles) {
+      _stopSearch();
+    }
     
     final provider = context.read<VlcProvider>();
     await provider.playFile(item.path);

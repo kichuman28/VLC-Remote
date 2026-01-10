@@ -495,11 +495,14 @@ class VlcProvider extends ChangeNotifier {
   }
 
   /// Play a custom playlist
-  Future<void> playCustomPlaylist(List<String> fileUris) async {
+  /// 
+  /// Clears VLC's playlist and loads the provided items
+  Future<void> playCustomPlaylist(List<String> fileUris, {int startIndex = 0}) async {
     if (_apiService == null || fileUris.isEmpty) return;
     
     try {
-      await _apiService!.playCustomPlaylist(fileUris);
+      await _apiService!.playCustomPlaylist(fileUris, startIndex: startIndex);
+      // Poll to get new status
       await Future.delayed(const Duration(milliseconds: 500));
       await _pollStatus();
     } catch (e) {

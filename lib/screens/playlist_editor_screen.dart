@@ -65,7 +65,7 @@ class _PlaylistEditorScreenState extends State<PlaylistEditorScreen> {
     _savePlaylist();
   }
 
-  Future<void> _playPlaylist() async {
+  Future<void> _playPlaylist({int startIndex = 0}) async {
     if (_playlist.items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -82,7 +82,7 @@ class _PlaylistEditorScreenState extends State<PlaylistEditorScreen> {
     
     final provider = context.read<VlcProvider>();
     final uris = _playlist.items.map((i) => i.uri).toList();
-    await provider.playCustomPlaylist(uris);
+    await provider.playCustomPlaylist(uris, startIndex: startIndex);
     
     if (mounted) {
       Navigator.of(context).pop();
@@ -157,7 +157,7 @@ class _PlaylistEditorScreenState extends State<PlaylistEditorScreen> {
             icon: const Icon(Icons.play_circle_filled_rounded),
             iconSize: 32,
             color: theme.colorScheme.primary,
-            onPressed: _playPlaylist,
+            onPressed: () => _playPlaylist(startIndex: 0),
             tooltip: 'Play All',
           ),
           const SizedBox(width: 8),
@@ -237,6 +237,7 @@ class _PlaylistEditorScreenState extends State<PlaylistEditorScreen> {
       onDismissed: (_) => _removeItem(index),
       child: ListTile(
         key: ValueKey('tile_${item.uri}_$index'),
+        onTap: () => _playPlaylist(startIndex: index),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Container(
           width: 40,
@@ -311,6 +312,7 @@ class _FilePickerScreenState extends State<_FilePickerScreen> {
 
   @override
   void dispose() {
+    _searchCancelled = true; // Stop any running search
     _searchController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
@@ -448,6 +450,11 @@ class _FilePickerScreenState extends State<_FilePickerScreen> {
   }
 
   void _confirmSelection() {
+    // Stop deep search if running
+    if (_isSearchingFiles) {
+      _stopSearch();
+    }
+
     final selected = _selectedItems.values
         .map((i) => PlaylistItem(name: i.name, uri: i.path))
         .toList();

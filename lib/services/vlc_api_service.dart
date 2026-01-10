@@ -571,18 +571,24 @@ class VlcApiService {
 
   /// Load and play a custom playlist
   /// 
-  /// Clears VLC's current playlist, adds all items, and starts playing
-  Future<void> playCustomPlaylist(List<String> fileUris) async {
+  /// [startIndex] Index to start playing from (default 0)
+  Future<void> playCustomPlaylist(List<String> fileUris, {int startIndex = 0}) async {
     if (fileUris.isEmpty) return;
+    if (startIndex < 0 || startIndex >= fileUris.length) startIndex = 0;
 
     // Clear existing playlist
     await clearPlaylist();
 
-    // Add first item and play it
-    await playFile(fileUris.first);
+    // 1. Enqueue items BEFORE the start index
+    for (int i = 0; i < startIndex; i++) {
+      await enqueueFile(fileUris[i]);
+    }
 
-    // Enqueue remaining items
-    for (int i = 1; i < fileUris.length; i++) {
+    // 2. Play the target item (this adds it and starts playing)
+    await playFile(fileUris[startIndex]);
+
+    // 3. Enqueue remaining items
+    for (int i = startIndex + 1; i < fileUris.length; i++) {
       await enqueueFile(fileUris[i]);
     }
   }

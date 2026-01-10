@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../providers/vlc_provider.dart';
 import 'remote_screen.dart';
+import 'instructions_screen.dart';
 
 /// Setup Screen
 ///
@@ -149,7 +150,11 @@ class _SetupScreenState extends State<SetupScreen> with SingleTickerProviderStat
                     children: [
                       // Logo and Title
                       _buildHeader(theme),
-                      const SizedBox(height: 48),
+                      const SizedBox(height: 24),
+
+                      // Instructions (Moved for better visibility)
+                      _buildInstructionsLink(theme),
+                      const SizedBox(height: 32),
 
                       // Input Fields
                       _buildInputFields(theme),
@@ -163,10 +168,6 @@ class _SetupScreenState extends State<SetupScreen> with SingleTickerProviderStat
 
                       // Action Buttons
                       _buildActionButtons(theme),
-                      const SizedBox(height: 32),
-
-                      // Setup Instructions
-                      _buildInstructions(theme),
                     ],
                   ),
                 ),
@@ -182,20 +183,14 @@ class _SetupScreenState extends State<SetupScreen> with SingleTickerProviderStat
     return Column(
       children: [
         // Icon
-        Container(
-          width: 72,
-          height: 72,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(22),
-          ),
-          child: Icon(
-            Icons.play_arrow_rounded,
-            size: 40,
-            color: theme.colorScheme.primary,
+        SizedBox(
+          width: 200, // Increased logo size
+          height: 160, // Increased logo size
+          child: Image.asset(
+            'assets/logo.png',
+            fit: BoxFit.contain,
           ),
         ),
-        const SizedBox(height: 20),
         // Title
         Text(
           'VLC Remote',
@@ -224,22 +219,17 @@ class _SetupScreenState extends State<SetupScreen> with SingleTickerProviderStat
     return Column(
       children: [
         // IP Address
-        TextFormField(
+        // IP Address
+        _buildTextField(
+          theme: theme,
+          label: 'IPv4 Address',
+          hint: '192.168.1.100',
           controller: _hostController,
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w500),
-          decoration: InputDecoration(
-            labelText: 'IPv4 Address',
-            hintText: '192.168.1.100',
-            prefixIcon: const Padding(
-              padding: EdgeInsets.only(left: 16, right: 12),
-              child: Icon(Icons.laptop_mac_rounded, size: 20),
-            ),
-          ),
+          icon: Icons.laptop_mac_rounded,
           keyboardType: TextInputType.number,
           inputFormatters: [
             FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
           ],
-          textInputAction: TextInputAction.next,
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Enter your laptop\'s IP address';
@@ -257,26 +247,20 @@ class _SetupScreenState extends State<SetupScreen> with SingleTickerProviderStat
             return null;
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
         // Port
-        TextFormField(
+        _buildTextField(
+          theme: theme,
+          label: 'Port',
+          hint: '8080',
           controller: _portController,
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w500),
-          decoration: InputDecoration(
-            labelText: 'Port',
-            hintText: '8080',
-            prefixIcon: const Padding(
-              padding: EdgeInsets.only(left: 16, right: 12),
-              child: Icon(Icons.tag_rounded, size: 20),
-            ),
-          ),
+          icon: Icons.tag_rounded,
           keyboardType: TextInputType.number,
           inputFormatters: [
             FilteringTextInputFormatter.digitsOnly,
             LengthLimitingTextInputFormatter(5),
           ],
-          textInputAction: TextInputAction.next,
           validator: (value) {
             if (value == null || value.isEmpty) return 'Enter port';
             final port = int.tryParse(value);
@@ -286,35 +270,27 @@ class _SetupScreenState extends State<SetupScreen> with SingleTickerProviderStat
             return null;
           },
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
 
         // Password
-        TextFormField(
+        _buildTextField(
+          theme: theme,
+          label: 'Password',
+          hint: 'VLC Web Interface password',
           controller: _passwordController,
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w500),
-          decoration: InputDecoration(
-            labelText: 'Password',
-            hintText: 'VLC Web Interface password',
-            prefixIcon: const Padding(
-              padding: EdgeInsets.only(left: 16, right: 12),
-              child: Icon(Icons.lock_outline_rounded, size: 20),
-            ),
-            suffixIcon: Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  size: 20,
-                ),
-                onPressed: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
-                },
-              ),
-            ),
-          ),
+          icon: Icons.lock_outline_rounded,
           obscureText: _obscurePassword,
           textInputAction: TextInputAction.done,
           onFieldSubmitted: (_) => _testConnection(),
+          suffixIcon: IconButton(
+            icon: Icon(
+              _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+              size: 20,
+            ),
+            onPressed: () {
+              setState(() => _obscurePassword = !_obscurePassword);
+            },
+          ),
           validator: (value) {
             if (value == null || value.isEmpty) {
               return 'Enter your VLC password';
@@ -402,201 +378,123 @@ class _SetupScreenState extends State<SetupScreen> with SingleTickerProviderStat
     );
   }
 
-  Widget _buildInstructions(ThemeData theme) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.help_outline_rounded,
-                size: 18,
-                color: theme.colorScheme.primary,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'How to enable VLC Web Interface',
-                style: GoogleFonts.manrope(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ],
+  Widget _buildInstructionsLink(ThemeData theme) {
+    return Center(
+      child: TextButton.icon(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const InstructionsScreen()),
+          );
+        },
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        ),
+        icon: Icon(
+          Icons.help_outline_rounded,
+          size: 20,
+          color: theme.colorScheme.primary,
+        ),
+        label: Text(
+          'How do I set this up?',
+          style: GoogleFonts.manrope(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.primary,
           ),
-          const SizedBox(height: 16),
-
-          // Step 1
-          _buildInstructionStep(
-            theme,
-            '1',
-            'Open Preferences',
-            'In VLC, go to Tools → Preferences',
-          ),
-
-          // Step 2 - Important!
-          _buildInstructionStep(
-            theme,
-            '2',
-            'Show ALL Settings',
-            'Look at the BOTTOM LEFT corner of the Preferences window. '
-                'You\'ll see two radio buttons: "Simple" and "All". '
-                'Click "All" to show advanced settings.',
-            isImportant: true,
-          ),
-
-          // Step 3
-          _buildInstructionStep(
-            theme,
-            '3',
-            'Enable Web interface',
-            'In the left sidebar, click "Interface" → "Main interfaces". '
-                'In the right panel, check the "Web" checkbox.',
-          ),
-
-          // Step 4 - Important!
-          _buildInstructionStep(
-            theme,
-            '4',
-            'Set your password',
-            'STILL in the left sidebar under "Main interfaces", '
-                'click the arrow/triangle to EXPAND it, then click "Lua". '
-                'Find "Lua HTTP" section and enter a password.',
-            isImportant: true,
-          ),
-
-          // Step 5
-          _buildInstructionStep(
-            theme,
-            '5',
-            'Save & Restart',
-            'Click "Save", then completely close and reopen VLC.',
-          ),
-
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.lightbulb_outline_rounded,
-                  size: 16,
-                  color: theme.colorScheme.primary,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'To find your laptop\'s IPv4: Open Command Prompt, type "ipconfig"',
-                    style: GoogleFonts.manrope(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildInstructionStep(
-    ThemeData theme,
-    String number,
-    String title,
-    String description, {
-    bool isImportant = false,
+  Widget _buildTextField({
+    required ThemeData theme,
+    required String label,
+    required String hint,
+    required TextEditingController controller,
+    required IconData icon,
+    TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
+    TextInputAction textInputAction = TextInputAction.next,
+    String? Function(String?)? validator,
+    bool obscureText = false,
+    Widget? suffixIcon,
+    Function(String)? onFieldSubmitted,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 22,
-            height: 22,
-            decoration: BoxDecoration(
-              color: isImportant
-                  ? theme.colorScheme.primary.withValues(alpha: 0.2)
-                  : theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(6),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            label,
+            style: GoogleFonts.manrope(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
             ),
-            child: Center(
-              child: Text(
-                number,
-                style: GoogleFonts.manrope(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: isImportant ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
-                ),
+          ),
+        ),
+        TextFormField(
+          controller: controller,
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w500),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+            ),
+            filled: true,
+            fillColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: theme.colorScheme.primary,
+                width: 2,
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.manrope(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    if (isImportant) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Important',
-                          style: GoogleFonts.manrope(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: GoogleFonts.manrope(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                    color: theme.colorScheme.onSurfaceVariant,
-                    height: 1.5,
-                  ),
-                ),
-              ],
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: theme.colorScheme.error,
+                width: 1,
+              ),
             ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(
+                color: theme.colorScheme.error,
+                width: 2,
+              ),
+            ),
+            prefixIcon: Padding(
+              padding: const EdgeInsets.only(left: 16, right: 12),
+              child: Icon(icon, size: 20),
+            ),
+            suffixIcon: suffixIcon != null
+                ? Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: suffixIcon,
+                  )
+                : null,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           ),
-        ],
-      ),
+          keyboardType: keyboardType,
+          inputFormatters: inputFormatters,
+          textInputAction: textInputAction,
+          validator: validator,
+          obscureText: obscureText,
+          onFieldSubmitted: onFieldSubmitted,
+        ),
+      ],
     );
   }
 }

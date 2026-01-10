@@ -467,6 +467,7 @@ class _FilePickerScreenState extends State<_FilePickerScreen> {
           color: theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(24),
         ),
+        clipBehavior: Clip.antiAlias,
         alignment: Alignment.center,
         child: TextField(
           controller: _searchController,
@@ -479,6 +480,8 @@ class _FilePickerScreenState extends State<_FilePickerScreen> {
               fontSize: 15, 
               color: theme.colorScheme.onSurfaceVariant
             ),
+            filled: false,
+            fillColor: Colors.transparent,
             border: InputBorder.none,
             focusedBorder: InputBorder.none,
             enabledBorder: InputBorder.none,

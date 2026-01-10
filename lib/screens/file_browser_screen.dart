@@ -292,6 +292,7 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
                   color: theme.colorScheme.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(24),
                 ),
+                clipBehavior: Clip.antiAlias,
                 alignment: Alignment.center,
                 child: TextField(
                   controller: _searchController,
@@ -304,6 +305,8 @@ class _FileBrowserScreenState extends State<FileBrowserScreen> {
                       fontSize: 15,
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
+                    filled: false,
+                    fillColor: Colors.transparent,
                     border: InputBorder.none,
                     focusedBorder: InputBorder.none,
                     enabledBorder: InputBorder.none,

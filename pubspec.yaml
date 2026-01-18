@@ -49,6 +49,9 @@ dependencies:
   
   # Google Fonts for Manrope typography
   google_fonts: ^6.2.1
+  
+  # URL launcher for opening YouTube tutorial
+  url_launcher: ^6.2.4
 
 dev_dependencies:
   flutter_test:

@@ -20,6 +20,14 @@ It's a **TV remote experience**, not a PC control panel.
 
 ---
 
+## 🎬 Video Demo
+
+[![Watch the Setup Tutorial](https://img.youtube.com/vi/4icTjBlBujM/maxresdefault.jpg)](https://youtu.be/4icTjBlBujM)
+
+👆 **[Watch the Setup Tutorial on YouTube](https://youtu.be/4icTjBlBujM)** - Learn how to enable VLC's Web Interface and connect the app in under 2 minutes!
+
+---
+
 ## ✨ Features
 
 | Feature | Description |
@@ -30,10 +38,12 @@ It's a **TV remote experience**, not a PC control panel.
 | 🎵 Playlist Editor | Create, edit, reorder, and save custom playlists |
 | 📍 Seek Bar | Drag to seek or tap to jump to specific timestamp |
 | ⏪⏩ Seek ±10s | Quick skip forward/backward buttons |
+| 🔊 Volume Control | Slider with **±5% increment buttons** for precise adjustments |
 | 🎧 Audio Tracks | Select audio languages/tracks with persistence |
 | 📝 Subtitles | Enable/disable and switch subtitle tracks |
 | ⚡ Playback Speed | Adjust speed from 0.25x to 2x |
-| 📺 Fullscreen | One-tap toggle for cinema mode |
+| � Aspect Ratio | Switch between 16:9, 4:3, 21:9, 1:1, and more |
+| �📺 Fullscreen | One-tap toggle for cinema mode |
 | 📡 Auto-connect | Remembers last connection details |
 | 🌙 Dark Mode | Optimized OLED-friendly dark UI |
 | 📱 Optimistic UI | Instant feedback on all controls |
@@ -69,8 +79,8 @@ lib/
 │
 ├── widgets/
 │   ├── big_control_button.dart     # Play/pause button
-│   ├── volume_slider.dart          # Debounced volume control
-│   └── media_settings_sheet.dart   # Audio/Sub/Speed controls
+│   ├── volume_slider.dart          # Volume slider with ±5% buttons
+│   └── media_settings_sheet.dart   # Audio/Sub/Speed/Aspect Ratio controls
 │
 └── utils/
     ├── app_theme.dart              # Manrope font & Color scheme

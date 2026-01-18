@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class InstructionsScreen extends StatelessWidget {
   const InstructionsScreen({super.key});
+
+  static const String _youtubeVideoUrl = 'https://youtu.be/4icTjBlBujM';
+  static const String _youtubeVideoId = '4icTjBlBujM';
+
+  Future<void> _openYouTubeVideo() async {
+    final uri = Uri.parse(_youtubeVideoUrl);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +38,9 @@ class InstructionsScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // YouTube Video Demo Section
+            _buildVideoSection(theme),
+            const SizedBox(height: 24),
             _buildIntroCard(theme),
             const SizedBox(height: 24),
             _buildNetworkWarning(theme),
@@ -105,6 +119,122 @@ class InstructionsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             _buildFirewallNote(theme),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoSection(ThemeData theme) {
+    return GestureDetector(
+      onTap: _openYouTubeVideo,
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // YouTube Thumbnail
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Image.network(
+                    'https://img.youtube.com/vi/$_youtubeVideoId/maxresdefault.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to medium quality if maxres not available
+                      return Image.network(
+                        'https://img.youtube.com/vi/$_youtubeVideoId/hqdefault.jpg',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[900],
+                            child: const Center(
+                              child: Icon(Icons.play_circle_outline, size: 64, color: Colors.white54),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+                // Play button overlay
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 44),
+                ),
+              ],
+            ),
+            // Video info
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.ondemand_video_rounded, color: Colors.red, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Watch Video Tutorial',
+                          style: GoogleFonts.manrope(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Prefer watching? Tap to open the video demo on YouTube',
+                          style: GoogleFonts.manrope(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.open_in_new_rounded,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    size: 20,
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

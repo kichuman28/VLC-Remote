@@ -223,7 +223,7 @@ class _SetupScreenState extends State<SetupScreen> with SingleTickerProviderStat
         _buildTextField(
           theme: theme,
           label: 'IPv4 Address',
-          hint: '192.168.1.100',
+          hint: '192.168.1.100/10.205.2.100',
           controller: _hostController,
           icon: Icons.laptop_mac_rounded,
           keyboardType: TextInputType.number,

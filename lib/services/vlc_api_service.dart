@@ -322,6 +322,14 @@ class VlcApiService {
     await _sendCommand('rate', {'val': rate.toString()});
   }
 
+  /// Set aspect ratio
+  /// 
+  /// Valid values: 1:1, 4:3, 5:4, 16:9, 16:10, 221:100, 235:100, 239:100
+  /// Use "default" to reset to video's native aspect ratio
+  Future<void> setAspectRatio(String ratio) async {
+    await _sendCommand('aspectratio', {'val': ratio});
+  }
+
   // ============================================================
   // FILE BROWSING
   // ============================================================

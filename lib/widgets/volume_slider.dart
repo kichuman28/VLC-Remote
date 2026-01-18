@@ -61,6 +61,20 @@ class _VolumeSliderState extends State<VolumeSlider> {
     });
   }
 
+  void _incrementVolume() {
+    final newValue = (_localValue + 5).clamp(0.0, 200.0);
+    setState(() => _localValue = newValue);
+    HapticFeedback.lightImpact();
+    widget.onChanged?.call(newValue.round());
+  }
+
+  void _decrementVolume() {
+    final newValue = (_localValue - 5).clamp(0.0, 200.0);
+    setState(() => _localValue = newValue);
+    HapticFeedback.lightImpact();
+    widget.onChanged?.call(newValue.round());
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -109,26 +123,80 @@ class _VolumeSliderState extends State<VolumeSlider> {
         ),
         const SizedBox(height: 16),
 
-        // Slider track
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: activeColor,
-            inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
-            thumbColor: activeColor,
-            overlayColor: activeColor.withValues(alpha: 0.15),
-            trackHeight: 6,
-            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-            overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
-          ),
-          child: Slider(
-            value: _localValue.clamp(0, 200),
-            min: 0,
-            max: 200,
-            onChanged:
-                widget.enabled && widget.onChanged != null ? _onChanged : null,
-          ),
+        // Volume control row with +/- buttons and slider
+        Row(
+          children: [
+            // Decrement button (-5)
+            _buildVolumeButton(
+              icon: Icons.remove_rounded,
+              onPressed: widget.enabled && widget.onChanged != null
+                  ? _decrementVolume
+                  : null,
+              theme: theme,
+            ),
+            
+            // Slider track
+            Expanded(
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: activeColor,
+                  inactiveTrackColor: theme.colorScheme.surfaceContainerHighest,
+                  thumbColor: activeColor,
+                  overlayColor: activeColor.withValues(alpha: 0.15),
+                  trackHeight: 6,
+                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 20),
+                ),
+                child: Slider(
+                  value: _localValue.clamp(0, 200),
+                  min: 0,
+                  max: 200,
+                  onChanged:
+                      widget.enabled && widget.onChanged != null ? _onChanged : null,
+                ),
+              ),
+            ),
+            
+            // Increment button (+5)
+            _buildVolumeButton(
+              icon: Icons.add_rounded,
+              onPressed: widget.enabled && widget.onChanged != null
+                  ? _incrementVolume
+                  : null,
+              theme: theme,
+            ),
+          ],
         ),
       ],
+    );
+  }
+
+  Widget _buildVolumeButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required ThemeData theme,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            size: 20,
+            color: onPressed != null
+                ? theme.colorScheme.onSurfaceVariant
+                : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
+          ),
+        ),
+      ),
     );
   }
 }

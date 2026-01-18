@@ -560,6 +560,25 @@ class VlcProvider extends ChangeNotifier {
     }
   }
 
+  /// Currently selected aspect ratio (for UI state)
+  String _currentAspectRatio = 'default';
+  String get currentAspectRatio => _currentAspectRatio;
+
+  /// Set aspect ratio
+  Future<void> setAspectRatio(String ratio) async {
+    if (_apiService == null) return;
+    
+    // Optimistic Update
+    _currentAspectRatio = ratio;
+    notifyListeners();
+
+    try {
+      await _apiService!.setAspectRatio(ratio);
+    } catch (e) {
+      debugPrint('Aspect ratio error: $e');
+    }
+  }
+
   // ============================================================
   // CLEANUP
   // ============================================================

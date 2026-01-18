@@ -68,6 +68,10 @@ class MediaSettingsSheet extends StatelessWidget {
                   _buildSpeedSection(context, provider, status, theme),
                   const SizedBox(height: 24),
 
+                  // Aspect Ratio
+                  _buildAspectRatioSection(context, provider, theme),
+                  const SizedBox(height: 24),
+
                   // Audio Track
                   if (status.audioTracks.isNotEmpty) ...[
                     _buildAudioSection(context, provider, status, theme),
@@ -160,6 +164,104 @@ class MediaSettingsSheet extends StatelessWidget {
                   alignment: Alignment.center,
                   child: Text(
                     speed == 1.0 ? '1x' : '${speed}x',
+                    style: GoogleFonts.manrope(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? Colors.white
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAspectRatioSection(
+    BuildContext context,
+    VlcProvider provider,
+    ThemeData theme,
+  ) {
+    // Common aspect ratios
+    final aspectRatios = [
+      {'value': 'default', 'label': 'Default'},
+      {'value': '16:9', 'label': '16:9'},
+      {'value': '4:3', 'label': '4:3'},
+      {'value': '21:9', 'label': '21:9'},
+      {'value': '1:1', 'label': '1:1'},
+      {'value': '16:10', 'label': '16:10'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Icons.aspect_ratio_rounded,
+              size: 20,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Aspect Ratio',
+              style: GoogleFonts.manrope(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                provider.currentAspectRatio == 'default' 
+                    ? 'Default' 
+                    : provider.currentAspectRatio,
+                style: GoogleFonts.manrope(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 40,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: aspectRatios.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemBuilder: (context, index) {
+              final ratio = aspectRatios[index];
+              final isSelected = provider.currentAspectRatio == ratio['value'];
+
+              return GestureDetector(
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  provider.setAspectRatio(ratio['value']!);
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    ratio['label']!,
                     style: GoogleFonts.manrope(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,

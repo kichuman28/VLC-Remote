@@ -327,7 +327,9 @@ class VlcApiService {
   /// Valid values: 1:1, 4:3, 5:4, 16:9, 16:10, 221:100, 235:100, 239:100
   /// Use "default" to reset to video's native aspect ratio
   Future<void> setAspectRatio(String ratio) async {
-    await _sendCommand('aspectratio', {'val': ratio});
+    // VLC resets to default when receiving an empty string
+    final vlcRatio = ratio == 'default' ? '' : ratio;
+    await _sendCommand('aspectratio', {'val': vlcRatio});
   }
 
   // ============================================================
